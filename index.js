@@ -1,27 +1,27 @@
 console.log("Hello World!");
 
-let boatLocations = generateBoatLocations(5);
+let enemyBoatLocation = generateBoatsLocations(5);
 let boatHits = [];
+let playerBoatLocation = generateBoatsLocations(5);
+let enemyHits = [];
 
 // Generates n random boat locations.
-function generateBoatLocations(numberOfBoats = 3) {
-	const boatLocations = [];
-	for (let i = 0; i < numberOfBoats; i++) {
+function generateBoatsLocations(numberOfBoats = 3) {
+	const enemyBoatLocation = [];
+
+	while (enemyBoatLocation.length < numberOfBoats) {
 		const boatLocation = Math.floor(Math.random() * 100);
-		boatLocations.push(boatLocation);
+		if (!enemyBoatLocation.includes(boatLocation)) {
+			enemyBoatLocation.push(boatLocation);
+		}
 	}
 
-	boatLocations.sort();
-	console.log(boatLocations);
+	enemyBoatLocation.sort();
+	console.log(enemyBoatLocation);
 
-	return boatLocations;
+	return enemyBoatLocation;
 }
 
-/**
- * Initializes a grid with 100 cells.
- * @param {*} gridName
- * @param {*} clickable
- */
 function initializeGrid(gridName, clickable = true) {
 	const grid = document.getElementById(gridName);
 	grid.innerHTML = "";
@@ -35,11 +35,17 @@ function initializeGrid(gridName, clickable = true) {
 
 		cell.id = gridName + "_" + i;
 
+		// Enemy grid
 		if (clickable) {
 			cell.onclick = () => {
-				cellLogic(cell.id);
+				playerMove(cell.id);
 			};
 			cell.classList.add("cursor-pointer");
+		} else {
+			// Player Grid
+			if (playerBoatLocation.includes(i)) {
+				cell.classList.add("bg-green-500");
+			}
 		}
 
 		cell.innerHTML = i;
@@ -47,14 +53,16 @@ function initializeGrid(gridName, clickable = true) {
 	}
 }
 
-function cellLogic(cellId) {
+function playerMove(cellId) {
 	const coordinate = parseInt(cellId.split("_")[1]);
 	console.log(coordinate);
 	if (boatHits.includes(coordinate)) {
 		return;
 	}
+
+	// Player Move
 	const cell = document.getElementById(cellId);
-	if (boatLocations.includes(coordinate)) {
+	if (enemyBoatLocation.includes(coordinate)) {
 		boatHits.push(coordinate);
 		cell.classList.add("bg-red-500");
 		cell.classList.remove("cursor-pointer");
@@ -64,21 +72,31 @@ function cellLogic(cellId) {
 		cell.classList.remove("cursor-pointer");
 	}
 
+	// Enemy Move
+	const enemyMove = Math.floor(Math.random() * 100);
+	const enemyCell = document.getElementById("player-grid_" + enemyMove);
+	if (playerBoatLocation.includes(enemyMove)) {
+		enemyHits.push(enemyMove);
+		enemyCell.classList.add("bg-red-500");
+	} else {
+		enemyCell.classList.add("bg-blue-500");
+	}
+
 	checkWin();
 }
 
 function checkWin() {
 	console.log(boatHits);
-	console.log(boatLocations);
+	console.log(enemyBoatLocation);
 
-	if (boatHits.length === boatLocations.length) {
+	if (boatHits.length === enemyBoatLocation.length) {
 		alert("You win!");
 		restartGame();
 	}
 }
 
 function restartGame() {
-	boatLocations = generateBoatLocations(5);
+	enemyBoatLocation = generateBoatsLocations(5);
 	boatHits = [];
 	initializeGrid("enemy-grid");
 	initializeGrid("player-grid", false);
