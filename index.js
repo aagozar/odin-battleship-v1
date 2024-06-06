@@ -1,45 +1,89 @@
-console.log("Hello World!");
+const numberOfShips = 5;
 
-let enemyBoatLocation = generateBoatsLocations(5);
-let boatHits = [];
-let playerBoatLocation = generateBoatsLocations(5);
-let enemyHits = [];
+let enemyBoatLocation = generateBoatsLocations(numberOfShips); // Enemy boat locations
+let boatHits = []; // The player's hits
+let playerBoatLocation = generateBoatsLocations(numberOfShips); // Player boat location
+let enemyHits = []; // The enemy's hits
+let enemyAttempts = []; // The enemy's attempts
 
-// Generates n random boat locations.
-function generateBoatsLocations(numberOfBoats = 3) {
-	const enemyBoatLocation = [];
+/**
+ * Generates random boat locations.
+ * @param {number} numberOfBoats
+ * @returns an array of numbers, indicating the boat locations.
+ */
+function generateBoatsLocations(numberOfBoats) {
+	let boatsLocations = [];
+	for (let i = 0; i < numberOfBoats; i++) {
+		const boat = generateBoat();
+		boat.forEach((coordinate) => {
+			if (!boatsLocations.includes(coordinate)) {
+				boatsLocations.push(coordinate);
+			}
+		});
+	}
 
-	while (enemyBoatLocation.length < numberOfBoats) {
-		const boatLocation = Math.floor(Math.random() * 100);
-		if (!enemyBoatLocation.includes(boatLocation)) {
-			enemyBoatLocation.push(boatLocation);
+	boatsLocations = boatsLocations.filter((coordinate) => coordinate < 100);
+	boatsLocations.sort((a, b) => a - b);
+	return boatsLocations;
+}
+
+/**
+ * Generates a boat.
+ */
+function generateBoat() {
+	let boat = [];
+	const type = Math.random() > 0.5 ? "horizontal" : "vertical";
+	const length = Math.floor(Math.random() * 4) + 1;
+	const start = calculateBoatStartLocation(type, length);
+
+	if (type === "horizontal") {
+		for (let i = 0; i < length; i++) {
+			boat.push(start + i);
+		}
+	} else {
+		for (let i = 0; i < length; i++) {
+			boat.push(start + i * 10);
 		}
 	}
 
-	enemyBoatLocation.sort();
-	console.log(enemyBoatLocation);
-
-	return enemyBoatLocation;
+	return boat;
 }
 
+function calculateBoatStartLocation(type, length) {
+	if (type === "horizontal") {
+		if (length === 1) {
+			return Math.floor(Math.random() * 100);
+		}
+		const tens = Math.floor(Math.random() * 10) * 10;
+		return tens + Math.floor(Math.random() * (10 - length));
+	}
+
+	return Math.floor(Math.random() * 100);
+}
+
+/**
+ * Renders the grid in the DOM.
+ * @param {String} gridName the name of the container where the grid will be rendered.
+ * @param {boolean} clickable if the grid is clickable or not. The enemy grid is clickable, the player grid is not.
+ */
 function initializeGrid(gridName, clickable = true) {
 	const grid = document.getElementById(gridName);
-	grid.innerHTML = "";
+	grid.innerHTML = ""; // Clear the grid.
 
 	for (let i = 0; i < 100; i++) {
 		const cell = document.createElement("div");
-		cell.classList.add("grid-cell");
 		cell.classList.add("border");
 		cell.classList.add("border-gray-300");
 		cell.classList.add("text-xs");
 
 		cell.id = gridName + "_" + i;
 
-		// Enemy grid
 		if (clickable) {
-			cell.onclick = () => {
-				playerMove(cell.id);
-			};
+			// Enemy grid
+			cell.addEventListener("click", handleCellClick);
+			if (enemyBoatLocation.includes(i)) {
+				cell.classList.add("bg-orange-500");
+			}
 			cell.classList.add("cursor-pointer");
 		} else {
 			// Player Grid
@@ -53,54 +97,102 @@ function initializeGrid(gridName, clickable = true) {
 	}
 }
 
-function playerMove(cellId) {
+/**
+ * Handles the click event on the cell.
+ */
+function handleCellClick() {
+	playTurn(this.id);
+	this.removeEventListener("click", handleCellClick);
+}
+
+/**
+ * Plays the turn of the player and the enemy.
+ * @param {String} cellId The id of the cell that was clicked.
+ * @returns Nothing, but updates the state of the game.
+ */
+function playTurn(cellId) {
 	const coordinate = parseInt(cellId.split("_")[1]);
-	console.log(coordinate);
 	if (boatHits.includes(coordinate)) {
 		return;
 	}
 
 	// Player Move
 	const cell = document.getElementById(cellId);
-	if (enemyBoatLocation.includes(coordinate)) {
+	if (checkHit(enemyBoatLocation, coordinate)) {
+		console.log("Hit!");
 		boatHits.push(coordinate);
 		cell.classList.add("bg-red-500");
 		cell.classList.remove("cursor-pointer");
-		cell.removeAttribute("onclick");
 	} else {
-		cell.classList.add("bg-blue-500");
+		cell.classList.add("bg-blue-200");
 		cell.classList.remove("cursor-pointer");
 	}
 
 	// Enemy Move
-	const enemyMove = Math.floor(Math.random() * 100);
+	let enemyMove = Math.floor(Math.random() * 100);
+	while (enemyAttempts.includes(enemyMove)) {
+		enemyMove = Math.floor(Math.random() * 100);
+	}
+
 	const enemyCell = document.getElementById("player-grid_" + enemyMove);
-	if (playerBoatLocation.includes(enemyMove)) {
+	if (checkHit(playerBoatLocation, enemyMove)) {
 		enemyHits.push(enemyMove);
 		enemyCell.classList.add("bg-red-500");
 	} else {
-		enemyCell.classList.add("bg-blue-500");
+		enemyCell.classList.add("bg-blue-200");
 	}
+	enemyAttempts.push(enemyMove);
 
 	checkWin();
 }
 
-function checkWin() {
-	console.log(boatHits);
-	console.log(enemyBoatLocation);
+/**
+ * Checks if a boat has been hit
+ * @param {Array} boatPositions The positions of the boats.
+ * @param {number} coordinate The coordinate to check.
+ * @returns
+ */
+function checkHit(boatPositions, coordinate) {
+	let hit = false;
 
+	if (boatPositions.includes(coordinate)) {
+		hit = true;
+	}
+	return hit;
+}
+
+/**
+ * Checks if the game is over.
+ */
+function checkWin() {
+	const dialog = document.querySelector("dialog");
+	const winner = document.getElementById("winner");
+
+	console.log(boatHits, enemyBoatLocation);
 	if (boatHits.length === enemyBoatLocation.length) {
-		alert("You win!");
+		dialog.showModal();
+		winner.textContent = "You won!";
+		restartGame();
+	}
+	if (enemyHits.length === playerBoatLocation.length) {
+		dialog.showModal();
+		winner.textContent = "Enemy won!";
 		restartGame();
 	}
 }
 
+/**
+ * Restarts the game.
+ */
 function restartGame() {
-	enemyBoatLocation = generateBoatsLocations(5);
+	enemyBoatLocation = generateBoatsLocations(numberOfShips);
+	playerBoatLocation = generateBoatsLocations(numberOfShips);
 	boatHits = [];
+	enemyHits = [];
 	initializeGrid("enemy-grid");
 	initializeGrid("player-grid", false);
 }
 
+// Start the game.
 initializeGrid("enemy-grid");
 initializeGrid("player-grid", false);
